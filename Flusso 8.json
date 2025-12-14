@@ -1,0 +1,521 @@
+{
+  "name": "Flusso 8",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        48,
+        208
+      ],
+      "id": "c7b8b653-6be6-4b38-b941-e8175b24b695"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "sheetId": "1IquLAYDUEfevQoVluMALtEfL67i7JA8ibIJzsCujv0k",
+        "range": "'Foglio1'!A:E",
+        "options": {}
+      },
+      "name": "Google Sheets Read",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [
+        320,
+        208
+      ],
+      "id": "50572558-f163-4ed4-8cc2-4180a0472bac",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "RHIbICEy16TbxeVv",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [
+        592,
+        208
+      ],
+      "id": "5cde29da-ed4c-45ce-9a59-8f8b79340b93"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json['Stato Pubblicazione ']}}",
+              "operation": "notEqual",
+              "value2": "Sì"
+            }
+          ]
+        }
+      },
+      "name": "IF Non Pubblicato",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        816,
+        208
+      ],
+      "id": "978417b3-1f43-41df-94d4-412ebb6617f3"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  let parsed = {};\n  try {\n    let raw = item.json.output || '{}';\n    raw = raw.replace(/```json\\s*([\\s\\S]*?)```/g, '$1').trim();\n    raw = raw.replace(/```/g, '').trim();\n    parsed = JSON.parse(raw);\n  } catch(e) {\n    parsed = {};\n  }\n\n  // unisci le slide in un unico testo\n  let contenutoTesto = '';\n  if (Array.isArray(parsed.Contenuto)) {\n    contenutoTesto = parsed.Contenuto.map(slide => {\n      return `${slide.Slide}\\n${slide.Testo}`;\n    }).join('\\n\\n'); // separa le slide con due linee\n  } else {\n    contenutoTesto = parsed.Contenuto || 'Nessun contenuto';\n  }\n\n  return {\n    json: {\n      TitoloPulito: parsed.Titolo || 'Titolo mancante',\n      ContenutoPulito: contenutoTesto,\n      ParoleChiave: parsed.ParoleChiave || '',\n      Argomento: item.json.Argomento,\n      IdeaPerPost: item.json['Idea per il Post']\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        208
+      ],
+      "id": "d7a51c4a-06ac-442d-a0f8-59d1e3bdb6d8",
+      "name": "Format AI Output"
+    },
+    {
+      "parameters": {
+        "pageId": {
+          "value": "28060f6f7cd080eebde0c1e1c3bb6d33",
+          "mode": "id"
+        },
+        "title": "={{$json['TitoloPulito']}}",
+        "blockUi": {
+          "blockValues": [
+            {
+              "textContent": "={{$json['ContenutoPulito']}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Notion Create Page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        208
+      ],
+      "id": "5fb19116-7018-4033-ac20-c3616f7bb68e",
+      "credentials": {
+        "notionApi": {
+          "id": "lVLfpA1OUedM5XPg",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  let parsed = {};\n  try {\n    // rimuove ```json e ``` finali\n    let raw = item.json.output || '{}';\n    raw = raw.replace(/```json\\s*([\\s\\S]*?)```/g, '$1').trim();\n    raw = raw.replace(/```/g, '').trim();\n    parsed = JSON.parse(raw);\n  } catch(e) {\n    parsed = {};\n  }\n\n  return {\n    json: {\n      ParoleChiave: parsed.ParoleChiave || ''\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        400
+      ],
+      "id": "087c9e80-aed3-46a7-ab00-2ffd98e4f500",
+      "name": "Code Extract Keywords"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1IquLAYDUEfevQoVluMALtEfL67i7JA8ibIJzsCujv0k",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Foglio1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1IquLAYDUEfevQoVluMALtEfL67i7JA8ibIJzsCujv0k/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Parole Chiave": "={{$json.ParoleChiave}}\"",
+            "Tipologia": "post facebook"
+          },
+          "matchingColumns": [
+            "Tipologia"
+          ],
+          "schema": [
+            {
+              "id": "Argomento",
+              "displayName": "Argomento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Idea per il Post",
+              "displayName": "Idea per il Post",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Stato Pubblicazione ",
+              "displayName": "Stato Pubblicazione ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tipologia",
+              "displayName": "Tipologia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Parole Chiave",
+              "displayName": "Parole Chiave",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1552,
+        400
+      ],
+      "id": "0597df55-8db8-4fac-b032-40f1ec34a83a",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "RHIbICEy16TbxeVv",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        464
+      ],
+      "id": "9ee49283-ec2f-40d8-923a-7aeca334938e",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6xAGhA9zHQNia7ZG",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Manual Trigger\n\nAvvia il flusso.\nServe per far partire il processo quando vuoi testarlo o eseguirlo di nuovo.",
+        "height": 144,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "cfb9512a-3d9f-4a01-914f-7e2a06d5e30f",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "content": "Split In Batches\n\nDivide i dati letti in singoli batch di 1 riga. Permette di processare una riga alla volta, utile per evitare errori e controlli condizionali.",
+        "height": 144,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        528,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "20e59967-cf39-4190-b664-e1af72f458be",
+      "name": "Sticky Note14"
+    },
+    {
+      "parameters": {
+        "content": "Google Sheets Read\n\nLegge i dati dal foglio Google Sheets specificato.",
+        "height": 144,
+        "width": 224
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        272,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "fa757f97-999e-4871-a882-669b2f74bcab",
+      "name": "Sticky Note15"
+    },
+    {
+      "parameters": {
+        "content": "IF Non Pubblicato\n\nControlla se lo stato del post è “Sì” (già pubblicato) o no.",
+        "height": 144,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        784,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "b03a0393-437f-49de-942b-1bda51d81ca3",
+      "name": "Sticky Note16"
+    },
+    {
+      "parameters": {
+        "content": "AI Agent\n\nGenera il contenuto per il post social usando l’AI \nRisponde in JSON con Titolo, Contenuto e ParoleChiave (max 3).",
+        "height": 144,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1024,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "2e3728db-39cb-4f86-93f1-1950e875fee5",
+      "name": "Sticky Note17"
+    },
+    {
+      "parameters": {
+        "content": "Format AI Output\n\nEstrae Titolo, Contenuto e Parole Chiave, li rende utilizzabili dai nodi successivi.",
+        "height": 144,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1280,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "16f0435f-c404-47ec-bd6f-c07421da61cb",
+      "name": "Sticky Note18"
+    },
+    {
+      "parameters": {
+        "content": "Notion Create Page\n\nCrea una pagina in Notion con Titolo e Contenuto generati dall’AI.\nAttenzione: Notion ha un limite massimo di caratteri per il blocco di testo, quindi il prompt limita la lunghezza del contenuto.",
+        "height": 192,
+        "width": 256
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1520,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "48903deb-d743-4dea-8853-bb1ebf120aeb",
+      "name": "Sticky Note19"
+    },
+    {
+      "parameters": {
+        "content": "Append row in sheet\n\nAggiorna la riga di Google Sheets corrispondente con le parole chiave generate.",
+        "height": 144,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1520,
+        608
+      ],
+      "typeVersion": 1,
+      "id": "d7c4b41d-f0e4-4aef-88a6-d8ed094314dd",
+      "name": "Sticky Note20"
+    },
+    {
+      "parameters": {
+        "content": "Code Extract Keywords\n\nEstrarre solo le parole chiave. Serve per aggiornare  la colonna “Parole Chiave” su Sheet.\n",
+        "height": 144,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1264,
+        608
+      ],
+      "typeVersion": 1,
+      "id": "7f218719-32a5-4597-a807-b918b194b289",
+      "name": "Sticky Note21"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Genera un contenuto per un post social rispettando i dati forniti.\n\nDati:\n- Argomento: {{$json[\"Argomento\"]}}\n- Idea per il Post: {{$json[\"Idea per il Post\"]}}\n- Tipologia: {{$json[\"Tipologia\"]}}\n\nRispondi solo con JSON valido:\n{\n  \"Titolo\": \"\",\n  \"Contenuto\": \"\",\n  \"ParoleChiave\": \"\"  // Inserisci al massimo 3 parole chiave separate da spazi o #, non di più\n}\n\n⚠️ Limita il campo \"Contenuto\" a massimo 150 parole per evitare errori di lunghezza su Notion.\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1008,
+        208
+      ],
+      "id": "dfc2dafa-8a74-4811-817d-bc05d76d1ee6",
+      "name": "AI Agent2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets Read": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "IF Non Pubblicato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Non Pubblicato": {
+      "main": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format AI Output": {
+      "main": [
+        [
+          {
+            "node": "Notion Create Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Extract Keywords": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "Format AI Output",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code Extract Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3e8586d4-5dde-403d-8aa1-b0b99a428dea",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3eade08974c65ea0e714de990b1c4d4deb3f525e0d19f574aa90538cacfd42e4"
+  },
+  "id": "PlouGkFA6a7M3Vfn",
+  "tags": []
+}
